@@ -366,6 +366,7 @@ function startGame() {
   gameRunning = true
   exitOpen = false
   explosions = []
+  playerDead = false
 
   loadLevel(level)
 
@@ -495,7 +496,12 @@ function movePlayer(dx, dy) {
   playerY = ny
 }
 
+let playerDead = false
+
 function killPlayer() {
+  if (playerDead) return // Prevent recursive calls
+  playerDead = true
+
   playDeath()
   playExplosion()
 
