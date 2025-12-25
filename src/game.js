@@ -76,6 +76,8 @@ const FIREFLY = 9
 const BUTTERFLY = 10
 const EXPLOSION = 11
 const DIAMOND_BIRTH = 12
+const BOULDER_FALLING = 13
+const DIAMOND_FALLING = 14
 
 // Colors
 const COLORS = {
@@ -116,7 +118,6 @@ let updateInterval = 150 // ms between physics updates
 
 // Animation state
 let explosions = []
-let falling = new Set()
 
 // UI elements
 let diamondsEl, diamondsNeededEl, scoreEl, livesEl, timeEl, caveEl, bestEl
@@ -365,7 +366,6 @@ function startGame() {
   gameRunning = true
   exitOpen = false
   explosions = []
-  falling = new Set()
 
   loadLevel(level)
 
@@ -428,8 +428,8 @@ function movePlayer(dx, dy) {
   // Can't move into closed exit
   if (target === EXIT && !exitOpen) return
 
-  // Collect diamond
-  if (target === DIAMOND) {
+  // Collect diamond (both stationary and falling)
+  if (target === DIAMOND || target === DIAMOND_FALLING) {
     diamonds++
     score += 10
     diamondsEl.textContent = diamonds
@@ -447,7 +447,12 @@ function movePlayer(dx, dy) {
     }
   }
 
-  // Push boulder horizontally
+  // Can't walk into falling boulders
+  if (target === BOULDER_FALLING) {
+    return
+  }
+
+  // Push stationary boulder horizontally only
   if (target === BOULDER && dy === 0) {
     const bx = nx + dx
     if (bx >= 0 && bx < gridWidth && grid[ny][bx] === EMPTY) {
@@ -539,66 +544,78 @@ function updatePhysics() {
     }
   }
 
-  // Update falling objects (boulders and diamonds)
-  // Scan from bottom to top
-  const newFalling = new Set()
+  // Track which cells we've already processed this frame
+  const processed = new Set()
 
+  // Update falling objects - scan from bottom to top, left to right
   for (let y = gridHeight - 2; y >= 0; y--) {
     for (let x = 0; x < gridWidth; x++) {
+      if (processed.has(`${x},${y}`)) continue
+
       const tile = grid[y][x]
-      if (tile !== BOULDER && tile !== DIAMOND) continue
+      const isBoulder = tile === BOULDER || tile === BOULDER_FALLING
+      const isDiamond = tile === DIAMOND || tile === DIAMOND_FALLING
+      if (!isBoulder && !isDiamond) continue
 
-      const below = grid[y + 1][x]
-      const wasFalling = falling.has(`${x},${y}`)
+      const isFalling = tile === BOULDER_FALLING || tile === DIAMOND_FALLING
+      const staticType = isBoulder ? BOULDER : DIAMOND
+      const fallingType = isBoulder ? BOULDER_FALLING : DIAMOND_FALLING
 
-      // Fall straight down
+      const below = y + 1 < gridHeight ? grid[y + 1][x] : WALL
+
+      // Check what's below
       if (below === EMPTY) {
-        grid[y + 1][x] = tile
-        grid[y][x] = EMPTY
-        newFalling.add(`${x},${y + 1}`)
+        if (isFalling) {
+          // Continue falling - move down
+          grid[y][x] = EMPTY
+          grid[y + 1][x] = fallingType
+          processed.add(`${x},${y + 1}`)
 
-        // Check if landed on player or enemy
-        if (y + 1 === playerY && x === playerX) {
-          killPlayer()
-          return
-        }
-        if (grid[y + 2] && (grid[y + 2][x] === FIREFLY || grid[y + 2][x] === BUTTERFLY)) {
-          // Will be handled next frame when it lands
+          // Check if we landed on player
+          if (y + 1 === playerY && x === playerX) {
+            killPlayer()
+            return
+          }
+        } else {
+          // Start falling (just change state, don't move yet)
+          grid[y][x] = fallingType
         }
       }
-      // Hit something while falling
-      else if (wasFalling) {
-        if (y + 1 === playerY && x === playerX) {
-          killPlayer()
-          return
-        }
+      // Something below - check if we were falling
+      else if (isFalling) {
+        // We landed on something
         if (below === FIREFLY) {
           explode(x, y + 1, false)
         } else if (below === BUTTERFLY) {
           explode(x, y + 1, true)
+        } else if (y + 1 === playerY && x === playerX) {
+          killPlayer()
+          return
         } else {
+          // Land and become stationary
+          grid[y][x] = staticType
           playBoulder()
         }
       }
-      // Roll off rounded objects
-      else if (below === BOULDER || below === DIAMOND || below === WALL) {
-        // Try left
+      // Check for rolling - stationary objects on rounded surfaces
+      else if (below === BOULDER || below === BOULDER_FALLING ||
+               below === DIAMOND || below === DIAMOND_FALLING ||
+               below === WALL) {
+        // Try to roll left
         if (x > 0 && grid[y][x - 1] === EMPTY && grid[y + 1][x - 1] === EMPTY) {
-          grid[y][x - 1] = tile
           grid[y][x] = EMPTY
-          newFalling.add(`${x - 1},${y}`)
+          grid[y][x - 1] = fallingType
+          processed.add(`${x - 1},${y}`)
         }
-        // Try right
+        // Try to roll right
         else if (x < gridWidth - 1 && grid[y][x + 1] === EMPTY && grid[y + 1][x + 1] === EMPTY) {
-          grid[y][x + 1] = tile
           grid[y][x] = EMPTY
-          newFalling.add(`${x + 1},${y}`)
+          grid[y][x + 1] = fallingType
+          processed.add(`${x + 1},${y}`)
         }
       }
     }
   }
-
-  falling = newFalling
 
   // Update enemies
   updateEnemies()
@@ -720,6 +737,7 @@ function render() {
           break
 
         case BOULDER:
+        case BOULDER_FALLING:
           ctx.fillStyle = '#a0a0a0'
           ctx.beginPath()
           ctx.arc(px + tileSize/2, py + tileSize/2, tileSize/2 - 1, 0, Math.PI * 2)
@@ -731,6 +749,7 @@ function render() {
           break
 
         case DIAMOND:
+        case DIAMOND_FALLING:
         case DIAMOND_BIRTH:
           const flash = tile === DIAMOND_BIRTH || Math.sin(Date.now() / 100) > 0
           ctx.fillStyle = flash ? '#ffffff' : '#00ffff'
