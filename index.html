@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Boulder Dash</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Boulder Dash</h1>
+      <div class="stats">
+        <div class="stat-box">
+          <span class="label">Diamonds</span>
+          <span class="value"><span id="diamonds">0</span>/<span id="diamonds-needed">10</span></span>
+        </div>
+        <div class="stat-box">
+          <span class="label">Score</span>
+          <span class="value" id="score">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">Lives</span>
+          <span class="value" id="lives">3</span>
+        </div>
+        <div class="stat-box">
+          <span class="label">Time</span>
+          <span class="value" id="time">150</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="game-wrapper">
+      <canvas id="game-canvas"></canvas>
+      <div class="game-message" id="game-message">
+        <p id="message-text">Game Over!</p>
+        <button id="play-again">Play Again</button>
+      </div>
+    </div>
+
+    <div class="level-info">
+      <span>Cave <span id="cave">A</span></span>
+      <span>Best: <span id="best">0</span></span>
+    </div>
+
+    <!-- Mobile controls -->
+    <div class="mobile-controls">
+      <div class="control-row">
+        <button class="control-btn" id="btn-up">^</button>
+      </div>
+      <div class="control-row">
+        <button class="control-btn" id="btn-left">&lt;</button>
+        <button class="control-btn" id="btn-down">v</button>
+        <button class="control-btn" id="btn-right">&gt;</button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="new-game">New Game</button>
+      <button id="login-btn">Login</button>
+    </div>
+
+    <div class="leaderboard">
+      <h3>Leaderboard</h3>
+      <button id="refresh-leaderboard" class="refresh-btn">Refresh</button>
+      <ul id="leaderboard-list">
+        <li class="loading">Loading...</li>
+      </ul>
+    </div>
+
+    <footer>
+      <p>Powered by <a href="https://nostrcg.github.io/did-nostr/" target="_blank">did:nostr</a></p>
+    </footer>
+  </div>
+
+  <!-- Login Modal -->
+  <div class="modal" id="login-modal">
+    <div class="modal-content">
+      <h2>Login with Nostr</h2>
+      <div class="login-options">
+        <button id="login-extension" class="login-option">
+          <span class="icon">🔐</span>
+          <span class="text">Browser Extension</span>
+          <span class="desc">Use nos2x, Alby, etc.</span>
+        </button>
+        <div class="divider"><span>or</span></div>
+        <div class="privkey-login">
+          <input type="password" id="privkey-input" placeholder="Enter private key (hex or nsec)">
+          <button id="login-privkey">Login</button>
+        </div>
+      </div>
+      <button class="close-modal" id="close-modal">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="src/game.js"></script>
+</body>
+</html>
